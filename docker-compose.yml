@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  nats:
+    image: nats:2.10
+    container_name: nats
+    ports:
+      - '4222:4222'
+      - '8222:8222' # Monitoring
+    command: >
+      -js
+      -sd /data/jetstream
+    volumes:
+      - nats-data:/data
+    networks:
+      - webhooknet
+
+  webhook-server:
+    image: ghcr.io/matthewvanderw/chirp-webhook-server-server:latest
+    container_name: webhook-server
+    environment:
+      - PORT=9000
+      - NATS_URL=nats://nats:4222
+    ports:
+      - '9000:9000'
+    depends_on:
+      - nats
+    networks:
+      - webhooknet
+
+  webhook-worker:
+    image: ghcr.io/matthewvanderw/chirp-webhook-server-worker:latest
+    container_name: webhook-worker
+    environment:
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - nats
+    networks:
+      - webhooknet
+
+volumes:
+  nats-data:
+
+networks:
+  webhooknet:
