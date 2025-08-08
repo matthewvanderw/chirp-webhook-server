@@ -13,6 +13,7 @@ const (
 	DefaultNatsURL   = nats.DefaultURL
 	StreamName       = "WEBHOOK_STREAM"
 	StreamSubject    = "webhook.messages"
+	DeliverSubject   = "webhook.deliverer"
 	DurableConsumer  = "webhook-deliverer"
 	DeliveryMaxRetry = 4
 	AckWait          = 30 * time.Second
@@ -67,13 +68,14 @@ func ensureStream(js nats.JetStreamContext, cfg *nats.StreamConfig) {
 
 func EnsureConsumer(js nats.JetStreamContext) {
 	cfg := &nats.ConsumerConfig{
-		Durable:       DurableConsumer,
-		AckPolicy:     nats.AckExplicitPolicy,
-		AckWait:       AckWait,          // 30s
-		MaxDeliver:    DeliveryMaxRetry, // 4
-		BackOff:       Backoff,          // []time.Duration{...}
-		DeliverPolicy: nats.DeliverNewPolicy,
-		FilterSubject: StreamSubject,
+		Durable:        DurableConsumer,
+		DeliverSubject: DeliverSubject,
+		AckPolicy:      nats.AckExplicitPolicy,
+		AckWait:        AckWait,
+		MaxDeliver:     DeliveryMaxRetry,
+		BackOff:        Backoff,
+		DeliverPolicy:  nats.DeliverNewPolicy,
+		FilterSubject:  StreamSubject,
 	}
 
 	if _, err := js.UpdateConsumer(StreamName, cfg); err != nil {
