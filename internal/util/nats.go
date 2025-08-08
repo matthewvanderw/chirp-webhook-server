@@ -64,3 +64,25 @@ func ensureStream(js nats.JetStreamContext, cfg *nats.StreamConfig) {
 	}
 	log.Printf("stream %s created", cfg.Name)
 }
+
+func EnsureConsumer(js nats.JetStreamContext) {
+	cfg := &nats.ConsumerConfig{
+		Durable:       DurableConsumer,
+		AckPolicy:     nats.AckExplicitPolicy,
+		AckWait:       AckWait,          // 30s
+		MaxDeliver:    DeliveryMaxRetry, // 4
+		BackOff:       Backoff,          // []time.Duration{...}
+		DeliverPolicy: nats.DeliverNewPolicy,
+		FilterSubject: StreamSubject,
+	}
+
+	if _, err := js.UpdateConsumer(StreamName, cfg); err != nil {
+		if errors.Is(err, nats.ErrConsumerNotFound) {
+			if _, err := js.AddConsumer(StreamName, cfg); err != nil {
+				log.Fatalf("add consumer failed: %v", err)
+			}
+		} else {
+			log.Fatalf("update consumer failed: %v", err)
+		}
+	}
+}

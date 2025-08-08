@@ -5,13 +5,17 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/matthewvanderw/chirp-webhook-server/internal/message"
 	"github.com/matthewvanderw/chirp-webhook-server/internal/util"
 	"github.com/nats-io/nats.go"
 )
 
+var httpClient = &http.Client{Timeout: 10 * time.Second}
+
 func sendWebhook(dest message.DestConfig, body []byte) error {
+
 	req, err := http.NewRequest("POST", dest.URL, bytes.NewReader(body))
 	if err != nil {
 		return err
@@ -28,7 +32,7 @@ func sendWebhook(dest message.DestConfig, body []byte) error {
 		req.Header.Set("X-Webhook-Auth-Value", dest.AuthValue)
 	}
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := httpClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -43,6 +47,7 @@ func sendWebhook(dest message.DestConfig, body []byte) error {
 
 func main() {
 	nc, js := util.Connect()
+	util.EnsureConsumer(js)
 	defer nc.Drain()
 
 	// Setup durable consumer with JetStream-managed retry
@@ -63,9 +68,7 @@ func main() {
 		m.Ack()
 	}, nats.Durable(util.DurableConsumer),
 		nats.ManualAck(),
-		nats.AckWait(util.AckWait),
-		nats.BackOff(util.Backoff),
-		nats.DeliverNew())
+		nats.Bind(util.StreamName, util.DurableConsumer))
 
 	if err != nil {
 		log.Fatalf("subscription failed: %v", err)
