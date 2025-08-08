@@ -22,14 +22,17 @@ func sendWebhook(dest message.DestConfig, body []byte) error {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	switch dest.AuthType {
-	case "bearer":
-		req.Header.Set("Authorization", "Bearer "+dest.AuthValue)
-	case "basic":
-		req.Header.Set("Authorization", "Basic "+dest.AuthValue)
-	default:
-		req.Header.Set("X-Webhook-Auth-Type", dest.AuthType)
-		req.Header.Set("X-Webhook-Auth-Value", dest.AuthValue)
+	if dest.AuthType != "none" {
+		switch dest.AuthType {
+		case "bearer":
+			req.Header.Set("Authorization", "Bearer "+dest.AuthValue)
+		case "basic":
+			req.Header.Set("Authorization", "Basic "+dest.AuthValue)
+		default:
+			req.Header.Set("X-Webhook-Auth-Type", dest.AuthType)
+			req.Header.Set("X-Webhook-Auth-Value", dest.AuthValue)
+			req.Header.Set(dest.AuthType, dest.AuthValue)
+		}
 	}
 
 	res, err := httpClient.Do(req)
